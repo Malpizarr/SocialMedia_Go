@@ -3,6 +3,7 @@ package main
 import (
 	service "SocialMedia/Service"
 	"SocialMedia/middleware"
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -23,7 +24,7 @@ func main() {
 	postsMux.Handle("/create", protectedCreatePostHandler)
 
 	mux.Handle("/posts/", http.StripPrefix("/posts", postsMux))
-
+	fmt.Println("Servidor iniciado en http://localhost:8080")
 	log.Println("Servidor iniciado en http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

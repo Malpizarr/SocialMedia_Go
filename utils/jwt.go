@@ -2,12 +2,11 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 )
-
-var jwtSecret = []byte("tu_clave_secreta_aqui")
 
 type Claims struct {
 	Username string `json:"username"`
@@ -15,6 +14,7 @@ type Claims struct {
 }
 
 func GenerateToken(username string) (string, error) {
+	jwtSecret := []byte(os.Getenv("JWT"))
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
 		Username: username,
@@ -33,10 +33,11 @@ func GenerateToken(username string) (string, error) {
 }
 
 func ValidateToken(tokenString string) (*Claims, error) {
+	jwtSecret := []byte(os.Getenv("JWT"))
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("metodo de firma no valido: %v", token.Header["alg"])
 		}
 		return jwtSecret, nil
 	})
@@ -45,7 +46,7 @@ func ValidateToken(tokenString string) (*Claims, error) {
 	}
 
 	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
+		return nil, fmt.Errorf("token invalido")
 	}
 
 	return claims, nil

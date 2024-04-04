@@ -32,40 +32,40 @@ func (s *UserService) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		log.Printf("Error decoding request body: %v", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "request body invalid", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
 	if err := validateUserData(user); err != nil {
-		log.Printf("Invalid user data: %v", err)
+		log.Printf("Datos de usuario invalidos: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Printf("Error hashing password: %v", err)
+		log.Printf("Error hasheando la contrasena: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	if err := Repositories.CreateUser(s.driver, user.Username, string(hashedPassword), user.Email); err != nil {
-		log.Printf("Error creating user: %v", err)
+		log.Printf("Error creando el usuario: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	createdUser, err := Repositories.GetUser(s.driver, user.Username)
 	if err != nil {
-		log.Printf("Error getting user: %v", err)
+		log.Printf("Error al obtener el usuario: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	jsonData, err := json.Marshal(createdUser)
 	if err != nil {
-		log.Printf("Error marshaling user data: %v", err)
+		log.Printf("Error serializando el usuario: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -73,7 +73,7 @@ func (s *UserService) CreateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if _, err := w.Write(jsonData); err != nil {
-		log.Printf("Error writing response: %v", err)
+		log.Printf("Error escribiendo la respuesta: %v", err)
 	}
 }
 
@@ -90,38 +90,36 @@ func (s *UserService) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// Validate input
 	if err := validateLoginCredentials(credentials); err != nil {
-		log.Printf("Invalid login credentials: %v", err)
+		log.Printf("Credenciales de inicio invalidas: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	user, err := Repositories.GetUser(s.driver, credentials.Username)
 	if err != nil {
-		log.Printf("Error getting user: %v", err)
+		log.Printf("Error al obtener el usuario: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	if user == nil {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		http.Error(w, "Usuario o contrasena invalidos", http.StatusUnauthorized)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user["password"].(string)), []byte(credentials.Password)); err != nil {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		http.Error(w, "Usuario o contrasena invalidos", http.StatusUnauthorized)
 		return
 	}
 
 	token, err := utils.GenerateToken(credentials.Username)
 	if err != nil {
-		log.Printf("Error generating token: %v", err)
+		log.Printf("Error generando el token: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	// Return token as response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"token": token})
@@ -133,19 +131,16 @@ func validateUserData(user struct {
 	Email    string `json:"email" validate:"required,email"`
 },
 ) error {
-	// Validate username
 	if len(user.Username) < 4 || len(user.Username) > 20 || !isAlphanumeric(user.Username) {
-		return errors.New("Invalid username")
+		return errors.New("username invalido")
 	}
 
-	// Validate password
 	if len(user.Password) < 8 {
-		return errors.New("Password must be at least 8 characters long")
+		return errors.New("la contrasena debe tener al menos 8 caracteres")
 	}
 
-	// Validate email
 	if !isValidEmail(user.Email) {
-		return errors.New("Invalid email address")
+		return errors.New("Email invalido")
 	}
 
 	return nil
@@ -156,14 +151,12 @@ func validateLoginCredentials(credentials struct {
 	Password string `json:"password" validate:"required,min=8"`
 },
 ) error {
-	// Validate username
 	if len(credentials.Username) < 4 || len(credentials.Username) > 20 || !isAlphanumeric(credentials.Username) {
-		return errors.New("Invalid username")
+		return errors.New("Ususername invalido")
 	}
 
-	// Validate password
 	if len(credentials.Password) < 8 {
-		return errors.New("Password must be at least 8 characters long")
+		return errors.New("La contrasena debe tener al menos 8 caracteres")
 	}
 
 	return nil
@@ -176,7 +169,7 @@ func isAlphanumeric(str string) bool {
 }
 
 func isValidEmail(email string) bool {
-	pattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	pattern := `^[a-zA-Z0-9_+&*-]+(?:\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,7}$`
 	regex := regexp.MustCompile(pattern)
 	return regex.MatchString(email)
 }

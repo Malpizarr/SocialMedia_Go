@@ -4,15 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
-
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Print("No .env file found")
-	}
-}
 
 func newDriver() neo4j.Driver {
 	uri := os.Getenv("NEO4J_URI")

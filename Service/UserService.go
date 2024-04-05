@@ -23,7 +23,7 @@ func NewUserService() *UserService {
 	return &UserService{driver: driver}
 }
 
-func (s *UserService) CreateUser(w http.ResponseWriter, r *http.Request) {
+func (s *UserService) Register(w http.ResponseWriter, r *http.Request) {
 	var user struct {
 		Username string `json:"username" validate:"required,alphanum,min=4,max=20"`
 		Password string `json:"password" validate:"required,min=8"`
@@ -122,7 +122,10 @@ func (s *UserService) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+
+	if err := json.NewEncoder(w).Encode(map[string]string{"token": token}); err != nil {
+		log.Printf("Error escribiendo la respuesta: %v", err)
+	}
 }
 
 func validateUserData(user struct {
@@ -140,7 +143,7 @@ func validateUserData(user struct {
 	}
 
 	if !isValidEmail(user.Email) {
-		return errors.New("Email invalido")
+		return errors.New("email invalido")
 	}
 
 	return nil
@@ -152,11 +155,11 @@ func validateLoginCredentials(credentials struct {
 },
 ) error {
 	if len(credentials.Username) < 4 || len(credentials.Username) > 20 || !isAlphanumeric(credentials.Username) {
-		return errors.New("Ususername invalido")
+		return errors.New("username invalido")
 	}
 
 	if len(credentials.Password) < 8 {
-		return errors.New("La contrasena debe tener al menos 8 caracteres")
+		return errors.New("la contrasena debe tener al menos 8 caracteres")
 	}
 
 	return nil

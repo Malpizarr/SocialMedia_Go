@@ -1,8 +1,8 @@
 package main
 
 import (
+	routes "SocialMedia/Routes"
 	service "SocialMedia/Service"
-	"SocialMedia/middleware"
 	"log"
 	"net/http"
 
@@ -19,11 +19,8 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/users", userService.CreateUser)
-	mux.HandleFunc("/login", userService.LoginUser)
-
-	mux.Handle("/posts/create", middleware.AuthMiddleware(http.HandlerFunc(postService.CreatePost)))
-	mux.Handle("/posts/{id}", middleware.AuthMiddleware(http.HandlerFunc(postService.GetUserPosts)))
+	routes.AuthRoutes(mux, userService)
+	routes.PostRoutes(mux, postService)
 
 	log.Println("Servidor iniciado en http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))

@@ -123,8 +123,11 @@ func (s *UserService) LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(map[string]string{"token": token}); err != nil {
-		log.Printf("Error escribiendo la respuesta: %v", err)
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"token":    token,
+		"username": credentials.Username,
+	}); err != nil {
+		log.Printf("Error writing response: %v", err)
 	}
 }
 

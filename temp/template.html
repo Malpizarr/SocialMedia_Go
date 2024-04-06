@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Social Media App</title>
+    <link rel="stylesheet" type="text/css" href="temp/style.css" />
+  </head>
+  <body>
+    <h1>Welcome to Social Media App</h1>
+
+    <div id="login-section">
+      <h2>Login</h2>
+      <form id="login-form">
+        <input type="text" name="username" placeholder="Username" />
+        <input type="password" name="password" placeholder="Password" />
+        <button type="submit">Login</button>
+      </form>
+    </div>
+
+    <div id="posts-section" style="display: none">
+      <h2>Posts</h2>
+      <div id="posts-loader"></div>
+    </div>
+
+    <script>
+      document
+        .getElementById("login-form")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          var formData = new FormData(event.target);
+          var username = formData.get("username");
+          var password = formData.get("password");
+
+          fetch("/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ username: username, password: password }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.token) {
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("username", data.username);
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("posts-section").style.display =
+                  "block";
+                loadPosts();
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+            });
+        });
+
+      function loadPosts() {
+        var username = localStorage.getItem("username");
+        var token = localStorage.getItem("token");
+
+        fetch("/posts/" + username, {
+          method: "GET",
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Posts data:", data);
+            var postsHtml = "";
+            data.forEach(function (post) {
+              postsHtml += `
+            <div class="post">
+              ${post.ImageURL ? `<img src="${post.ImageURL}" alt="Post Image">` : ""}
+              <div class="content">${post.Content}</div>
+              <div class="likes">Likes: ${post.Likes}</div>
+            </div>
+          `;
+            });
+            document.getElementById("posts-loader").innerHTML = postsHtml;
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+    </script>
+  </body>
+</html>

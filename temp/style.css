@@ -1,0 +1,56 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+
+h1 {
+  color: #333;
+}
+
+#login-section,
+#posts-section {
+  margin-bottom: 20px;
+}
+
+h2 {
+  color: #666;
+}
+
+form {
+  margin-top: 10px;
+}
+
+input[type="text"],
+input[type="password"] {
+  padding: 5px;
+  margin-right: 10px;
+}
+
+button {
+  padding: 5px 10px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.post {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.post img {
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 10px;
+}
+
+.post .content {
+  margin-bottom: 5px;
+}
+
+.post .likes {
+  color: #999;
+}

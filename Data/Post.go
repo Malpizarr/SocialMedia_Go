@@ -1,8 +1,9 @@
 package data
 
 type Post struct {
-	Content  string
-	Likes    int
-	Comments []string
-	ImageURL string
+	ID       string   `json:"id"`
+	Content  string   `json:"content"`
+	Likes    int      `json:"likes"`
+	Comments []string `json:"comments"`
+	ImageURL string   `json:"imageURL"`
 }

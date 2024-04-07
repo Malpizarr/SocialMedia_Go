@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
@@ -32,6 +33,7 @@ func (s *PostService) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var newPost data.Post
+	newPost.ID = uuid.New().String()
 	newPost.Content = r.FormValue("content")
 	newPost.Likes = 0
 
@@ -96,5 +98,26 @@ func (s *PostService) GetUserPosts(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(posts); err != nil {
 		log.Printf("Error encoding response: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (s *PostService) DeletePost(w http.ResponseWriter, r *http.Request) {
+	postID := r.PathValue("id")
+	if postID == "" {
+		http.Error(w, "Post ID is required", http.StatusBadRequest)
+		return
+	}
+
+	username := r.Context().Value("username").(string)
+
+	if err := Repositories.DeletePost(s.driver, username, postID); err != nil {
+		log.Printf("Error deleting post: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write([]byte("Post deleted successfully")); err != nil {
+		log.Printf("Error writing response: %v", err)
 	}
 }

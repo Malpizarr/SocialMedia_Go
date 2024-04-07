@@ -70,9 +70,9 @@
             data.forEach(function (post) {
               postsHtml += `
             <div class="post">
-              ${post.ImageURL ? `<img src="${post.ImageURL}" alt="Post Image">` : ""}
-              <div class="content">${post.Content}</div>
-              <div class="likes">Likes: ${post.Likes}</div>
+              ${post.imageURL ? `<img src="${post.imageURL}" alt="Post Image">` : ""}
+              <div class="content">${post.content}</div>
+              <div class="likes">Likes: ${post.likes}</div>
             </div>
           `;
             });

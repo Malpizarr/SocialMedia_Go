@@ -2,6 +2,7 @@ package Repositories
 
 import (
 	data "SocialMedia/Data"
+	"log"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -13,14 +14,15 @@ func CreatePost(driver neo4j.Driver, username string, post data.Post) error {
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		_, err := transaction.Run(
 			`MATCH (u:User {username: $username})
-				CREATE (p:Post {content: $content, likes: $likes,comments: $comments ,ImageURL: $imageURL})
-			 CREATE (u)-[:POSTED]->(p)`,
+             CREATE (p:Post {id: $id, content: $content, likes: $likes, comments: $comments, ImageURL: $imageURL})
+             CREATE (u)-[:POSTED]->(p)`,
 			map[string]interface{}{
 				"username": username,
+				"id":       post.ID, // Aquí se incluye el ID del post
 				"content":  post.Content,
 				"likes":    post.Likes,
-				"imageURL": post.ImageURL,
 				"comments": post.Comments,
+				"imageURL": post.ImageURL,
 			},
 		)
 		return nil, err
@@ -35,7 +37,7 @@ func GetUserPost(driver neo4j.Driver, username string) ([]data.Post, error) {
 
 	query := `
 		MATCH (u:User {username: $username})-[:POSTED]->(p:Post)
-		RETURN p.content AS content, p.likes AS likes, p.comments AS comments, p.ImageURL AS imageURL
+		RETURN p.id AS ID, p.content AS content, p.likes AS likes, p.comments AS comments, p.ImageURL AS imageURL
 	`
 	params := map[string]interface{}{"username": username}
 
@@ -48,9 +50,14 @@ func GetUserPost(driver neo4j.Driver, username string) ([]data.Post, error) {
 	for result.Next() {
 		record := result.Record()
 
+		var id string
 		var content, imageURL string
 		var likes int64
 		var commentsSlice []string
+
+		if IDValue, ok := record.Get("ID"); ok && IDValue != nil {
+			id = IDValue.(string)
+		}
 
 		if contentValue, ok := record.Get("content"); ok && contentValue != nil {
 			content = contentValue.(string)
@@ -74,6 +81,7 @@ func GetUserPost(driver neo4j.Driver, username string) ([]data.Post, error) {
 		}
 
 		post := data.Post{
+			ID:       id,
 			Content:  content,
 			Likes:    int(likes),
 			Comments: commentsSlice,
@@ -86,4 +94,33 @@ func GetUserPost(driver neo4j.Driver, username string) ([]data.Post, error) {
 	}
 
 	return posts, nil
+}
+
+func DeletePost(driver neo4j.Driver, username, postID string) error {
+	session := driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+
+	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(`
+            MATCH (u:User {username: $username})-[:POSTED]->(p:Post {id: $postID})
+            DETACH DELETE p
+        `, map[string]interface{}{
+			"username": username,
+			"postID":   postID,
+		})
+		if err != nil {
+			log.Printf("Error running Cypher query: %v", err)
+			return nil, err
+		}
+
+		// Log the result to see if the query has been executed successfully
+		log.Printf("Delete query result: %v", result)
+
+		return nil, nil
+	})
+	if err != nil {
+		log.Printf("Error in write transaction: %v", err)
+	}
+
+	return err
 }

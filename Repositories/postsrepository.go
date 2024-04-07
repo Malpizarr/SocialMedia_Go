@@ -18,7 +18,7 @@ func CreatePost(driver neo4j.Driver, username string, post data.Post) error {
              CREATE (u)-[:POSTED]->(p)`,
 			map[string]interface{}{
 				"username": username,
-				"id":       post.ID, // Aquí se incluye el ID del post
+				"id":       post.ID,
 				"content":  post.Content,
 				"likes":    post.Likes,
 				"comments": post.Comments,
@@ -113,7 +113,6 @@ func DeletePost(driver neo4j.Driver, username, postID string) error {
 			return nil, err
 		}
 
-		// Log the result to see if the query has been executed successfully
 		log.Printf("Delete query result: %v", result)
 
 		return nil, nil

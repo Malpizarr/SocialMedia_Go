@@ -17,12 +17,12 @@ func main() {
 
 	userService := service.NewUserService()
 	postService := service.NewPostService()
-
+	friendService := service.NewFriendsService()
 	mux := http.NewServeMux()
 
 	routes.AuthRoutes(mux, userService)
 	routes.PostRoutes(mux, postService)
-
+	routes.FriendRoutes(mux, friendService)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "temp/template.html")
 	})

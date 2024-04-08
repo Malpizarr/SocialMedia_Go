@@ -1,18 +1,27 @@
 package Repositories
 
 import (
+	"errors"
+
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
 func CreateUser(driver neo4j.Driver, username, password, email string) error {
 	session := driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
+
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
-		_, err := transaction.Run(
-			"CREATE (u:User {username: $username, password: $password, email: $email}) RETURN u",
+		result, err := transaction.Run(
+			"CREATE (u:User {username: $username, password: $password, email: $email})",
 			map[string]interface{}{"username": username, "password": password, "email": email},
 		)
-		return nil, err
+		if err != nil {
+			if neo4jError, ok := err.(*neo4j.Neo4jError); ok && neo4jError.Code == "Neo.ClientError.Schema.ConstraintValidationFailed" {
+				return nil, errors.New("el username ya está en uso")
+			}
+			return nil, err
+		}
+		return result.Consume()
 	})
 	return err
 }

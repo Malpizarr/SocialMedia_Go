@@ -51,11 +51,14 @@ func (s *UserService) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := Repositories.CreateUser(s.driver, user.Username, string(hashedPassword), user.Email); err != nil {
-		log.Printf("Error creando el usuario: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		if err.Error() == "el username ya está en uso" {
+			http.Error(w, err.Error(), http.StatusConflict)
+		} else {
+			log.Printf("Error creando el usuario: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
-
 	createdUser, err := Repositories.GetUser(s.driver, user.Username)
 	if err != nil {
 		log.Printf("Error al obtener el usuario: %v", err)

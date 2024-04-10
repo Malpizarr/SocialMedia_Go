@@ -19,3 +19,29 @@ func AddFriend(driver neo4j.Driver, usernameSent, usernameRecieved string) error
 	})
 	return err
 }
+
+func GetFriendsList(driver neo4j.Driver, username string) ([]string, error) {
+	session := driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+
+	query := `
+        MATCH (u:User {username: $username})-[:FRIEND]-(friend:User)
+        RETURN friend.username AS friendUsername
+    `
+
+	result, err := session.Run(query, map[string]interface{}{
+		"username": username,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var friends []string
+	for result.Next() {
+		record := result.Record()
+		friendUsername, _ := record.Get("friendUsername")
+		friends = append(friends, friendUsername.(string))
+	}
+
+	return friends, nil
+}

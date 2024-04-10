@@ -121,3 +121,30 @@ func (s *PostService) DeletePost(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error writing response: %v", err)
 	}
 }
+
+func (s *PostService) GetFriendsPosts(w http.ResponseWriter, r *http.Request) {
+	username := r.Context().Value("username").(string)
+
+	friends, err := Repositories.GetFriendsList(s.driver, username)
+	if err != nil {
+		log.Printf("Error obteniendo lista de amigos: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	var friendsPosts []data.Post
+	for _, friend := range friends {
+		posts, err := Repositories.GetUserPost(s.driver, friend)
+		if err != nil {
+			log.Printf("Error obteniendo posts del amigo %s: %v", friend, err)
+			continue
+		}
+		friendsPosts = append(friendsPosts, posts...)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(friendsPosts); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}

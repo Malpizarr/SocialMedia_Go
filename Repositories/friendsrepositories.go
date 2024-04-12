@@ -45,3 +45,20 @@ func GetFriendsList(driver neo4j.Driver, username string) ([]string, error) {
 
 	return friends, nil
 }
+
+func DeleteFriend(driver neo4j.Driver, usernameSent, usernameRecieved string) error {
+	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
+		_, err := transaction.Run(
+			`MATCH (u:User {username: $usernameSent})-[f:FRIEND]-(u2:User {username: $usernameRecieved})
+						 DELETE f`,
+			map[string]interface{}{
+				"usernameSent":     usernameSent,
+				"usernameRecieved": usernameRecieved,
+			},
+		)
+		return nil, err
+	})
+	return err
+}

@@ -2,24 +2,26 @@ package service
 
 import (
 	"SocialMedia/Repositories"
-	"SocialMedia/db"
 	"encoding/json"
 	"log"
 	"net/http"
-
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
-type FriendsService struct {
-	driver neo4j.Driver
+type FriendsService interface {
+	AddFriend(w http.ResponseWriter, r *http.Request)
+	DeleteFriend(w http.ResponseWriter, r *http.Request)
+	AcceptFriendRequest(w http.ResponseWriter, r *http.Request)
 }
 
-func NewFriendsService() *FriendsService {
-	driver := db.Driver()
-	return &FriendsService{driver: driver}
+type friendsService struct {
+	FriendRepo Repositories.FriendsRepository
 }
 
-func (s *FriendsService) AddFriend(w http.ResponseWriter, r *http.Request) {
+func NewFriendsService(fr Repositories.FriendsRepository) FriendsService {
+	return &friendsService{fr}
+}
+
+func (s *friendsService) AddFriend(w http.ResponseWriter, r *http.Request) {
 	var friendRequest struct {
 		UsernameSent     string `json:"usernamesent"`
 		UsernameReceived string `json:"usernamereceived"`
@@ -30,7 +32,8 @@ func (s *FriendsService) AddFriend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	if err := Repositories.AddFriend(s.driver, friendRequest.UsernameSent, friendRequest.UsernameReceived); err != nil {
+	if err := s.FriendRepo.AddFriend(friendRequest.UsernameSent, friendRequest.UsernameReceived); err != nil {
+
 		log.Printf("Error adding friend: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -44,7 +47,7 @@ func (s *FriendsService) AddFriend(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *FriendsService) DeleteFriend(w http.ResponseWriter, r *http.Request) {
+func (s *friendsService) DeleteFriend(w http.ResponseWriter, r *http.Request) {
 	var friendRequest struct {
 		UsernameSent     string `json:"usernamesent"`
 		UsernameReceived string `json:"usernamereceived"`
@@ -55,7 +58,7 @@ func (s *FriendsService) DeleteFriend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	if err := Repositories.DeleteFriend(s.driver, friendRequest.UsernameSent, friendRequest.UsernameReceived); err != nil {
+	if err := s.FriendRepo.DeleteFriend(friendRequest.UsernameSent, friendRequest.UsernameReceived); err != nil {
 		log.Printf("Error deleting friend: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -63,6 +66,31 @@ func (s *FriendsService) DeleteFriend(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	if _, err := w.Write([]byte(`{"message": "Friend deleted"}`)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
+}
+
+func (s *friendsService) AcceptFriendRequest(w http.ResponseWriter, r *http.Request) {
+	var friendRequest struct {
+		UsernameSent     string `json:"usernamesent"`
+		UsernameReceived string `json:"usernamereceived"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&friendRequest); err != nil {
+
+		log.Printf("Error decoding request body: %v", err)
+		http.Error(w, "request body invalid", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+	if err := s.FriendRepo.AcceptFriendRequest(friendRequest.UsernameSent, friendRequest.UsernameReceived); err != nil {
+		log.Printf("Error accepting friend: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write([]byte(`{"message": "Friend accepted"}`)); err != nil {
 		log.Printf("Error writing response: %v", err)
 	}
 }

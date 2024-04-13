@@ -2,14 +2,30 @@ package Repositories
 
 import "github.com/neo4j/neo4j-go-driver/v4/neo4j"
 
-func AddFriend(driver neo4j.Driver, usernameSent, usernameRecieved string) error {
-	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+type FriendsRepository interface {
+	AddFriend(usernameSent, usernameRecieved string) error
+	GetFriendsList(username string) ([]string, error)
+	DeleteFriend(usernamesent, usernamereceived string) error
+	AcceptFriendRequest(usernameSent, usernameRecieved string) error
+}
+
+type friendsRepository struct {
+	driver neo4j.Driver
+}
+
+func NewFriendsRepository(driver neo4j.Driver) FriendsRepository {
+	return &friendsRepository{driver: driver}
+}
+
+func (graph *friendsRepository) AddFriend(usernameSent, usernameRecieved string) error {
+	session := graph.driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		_, err := transaction.Run(
 			`MATCH (u:User {username: $usernameSent})
-						 MATCH (u2:User {username: $usernameRecieved})
-						 CREATE (u)-[:FRIEND]->(u2)`,
+			 MATCH (u2:User {username: $usernameRecieved})
+			 MERGE (u)-[r:FRIEND]->(u2)
+       ON CREATE SET r.acepted = false`,
 			map[string]interface{}{
 				"usernameSent":     usernameSent,
 				"usernameRecieved": usernameRecieved,
@@ -20,8 +36,24 @@ func AddFriend(driver neo4j.Driver, usernameSent, usernameRecieved string) error
 	return err
 }
 
-func GetFriendsList(driver neo4j.Driver, username string) ([]string, error) {
-	session := driver.NewSession(neo4j.SessionConfig{})
+func (graph *friendsRepository) AcceptFriendRequest(usernameSent, usernameRecieved string) error {
+	session := graph.driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
+		_, err := transaction.Run(
+			`MATCH (u:User {username: $usernameSent})-[r:FRIEND]-(u2:User {username: $usernameRecieved})
+     SET r.acepted = true`,
+			map[string]interface{}{
+				"usernameSent":     usernameSent,
+				"usernameRecieved": usernameRecieved,
+			})
+		return nil, err
+	})
+	return err
+}
+
+func (graph *friendsRepository) GetFriendsList(username string) ([]string, error) {
+	session := graph.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
 	query := `
@@ -46,8 +78,8 @@ func GetFriendsList(driver neo4j.Driver, username string) ([]string, error) {
 	return friends, nil
 }
 
-func DeleteFriend(driver neo4j.Driver, usernameSent, usernameRecieved string) error {
-	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+func (graph *friendsRepository) DeleteFriend(usernameSent, usernameRecieved string) error {
+	session := graph.driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		_, err := transaction.Run(

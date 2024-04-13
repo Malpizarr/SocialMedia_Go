@@ -1,8 +1,10 @@
 package main
 
 import (
+	"SocialMedia/Repositories"
 	routes "SocialMedia/Routes"
 	service "SocialMedia/Service"
+	"SocialMedia/db"
 	"log"
 	"net/http"
 
@@ -17,7 +19,7 @@ func main() {
 
 	userService := service.NewUserService()
 	postService := service.NewPostService()
-	friendService := service.NewFriendsService()
+	friendService := service.NewFriendsService(Repositories.NewFriendsRepository(db.Driver()))
 	mux := http.NewServeMux()
 
 	routes.AuthRoutes(mux, userService)

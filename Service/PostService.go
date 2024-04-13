@@ -16,7 +16,8 @@ import (
 )
 
 type PostService struct {
-	driver neo4j.Driver
+	friendRepo Repositories.FriendsRepository
+	driver     neo4j.Driver
 }
 
 func NewPostService() *PostService {
@@ -125,7 +126,7 @@ func (s *PostService) DeletePost(w http.ResponseWriter, r *http.Request) {
 func (s *PostService) GetFriendsPosts(w http.ResponseWriter, r *http.Request) {
 	username := r.Context().Value("username").(string)
 
-	friends, err := Repositories.GetFriendsList(s.driver, username)
+	friends, err := s.friendRepo.GetFriendsList(username)
 	if err != nil {
 		log.Printf("Error obteniendo lista de amigos: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

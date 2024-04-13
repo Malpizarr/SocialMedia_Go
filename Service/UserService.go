@@ -2,7 +2,6 @@ package service
 
 import (
 	"SocialMedia/Repositories"
-	"SocialMedia/db"
 	"SocialMedia/utils"
 	"encoding/json"
 	"errors"
@@ -10,20 +9,23 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserService struct {
-	driver neo4j.Driver
+type UserService interface {
+	Register(w http.ResponseWriter, r *http.Request)
+	LoginUser(w http.ResponseWriter, r *http.Request)
 }
 
-func NewUserService() *UserService {
-	driver := db.Driver()
-	return &UserService{driver: driver}
+type userService struct {
+	userRepo Repositories.UserRepository
 }
 
-func (s *UserService) Register(w http.ResponseWriter, r *http.Request) {
+func NewUserService(userRepo Repositories.UserRepository) UserService {
+	return &userService{userRepo}
+}
+
+func (s *userService) Register(w http.ResponseWriter, r *http.Request) {
 	var user struct {
 		Username string `json:"username" validate:"required,alphanum,min=4,max=20"`
 		Password string `json:"password" validate:"required,min=8"`
@@ -50,7 +52,7 @@ func (s *UserService) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := Repositories.CreateUser(s.driver, user.Username, string(hashedPassword), user.Email); err != nil {
+	if err := s.userRepo.CreateUser(user.Username, string(hashedPassword), user.Email); err != nil {
 		if err.Error() == "el username ya está en uso" {
 			http.Error(w, err.Error(), http.StatusConflict)
 		} else {
@@ -59,7 +61,7 @@ func (s *UserService) Register(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	createdUser, err := Repositories.GetUser(s.driver, user.Username)
+	createdUser, err := s.userRepo.GetUser(user.Username)
 	if err != nil {
 		log.Printf("Error al obtener el usuario: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -80,7 +82,7 @@ func (s *UserService) Register(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *UserService) LoginUser(w http.ResponseWriter, r *http.Request) {
+func (s *userService) LoginUser(w http.ResponseWriter, r *http.Request) {
 	var credentials struct {
 		Username string `json:"username" validate:"required,alphanum,min=4,max=20"`
 		Password string `json:"password" validate:"required,min=8"`
@@ -99,7 +101,7 @@ func (s *UserService) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := Repositories.GetUser(s.driver, credentials.Username)
+	user, err := s.userRepo.GetUser(credentials.Username)
 	if err != nil {
 		log.Printf("Error al obtener el usuario: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

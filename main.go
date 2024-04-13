@@ -17,9 +17,13 @@ func main() {
 		log.Print("No .env encontrado")
 	}
 
-	userService := service.NewUserService()
-	postService := service.NewPostService()
-	friendService := service.NewFriendsService(Repositories.NewFriendsRepository(db.Driver()))
+	friendrepo := Repositories.NewFriendsRepository(db.Driver())
+	postrepo := Repositories.NewPostsRepository(db.Driver())
+	userrepo := Repositories.NewUserRepository(db.Driver())
+
+	userService := service.NewUserService(userrepo)
+	postService := service.NewPostService(postrepo, friendrepo)
+	friendService := service.NewFriendsService(friendrepo)
 	mux := http.NewServeMux()
 
 	routes.AuthRoutes(mux, userService)

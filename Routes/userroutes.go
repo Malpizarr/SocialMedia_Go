@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func AuthRoutes(mux *http.ServeMux, userService *service.UserService) {
+func AuthRoutes(mux *http.ServeMux, userService service.UserService) {
 	mux.HandleFunc("/register", userService.Register)
 	mux.HandleFunc("/login", userService.LoginUser)
 }

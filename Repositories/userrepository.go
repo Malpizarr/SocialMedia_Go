@@ -6,8 +6,21 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
-func CreateUser(driver neo4j.Driver, username, password, email string) error {
-	session := driver.NewSession(neo4j.SessionConfig{})
+type UserRepository interface {
+	CreateUser(username, password, email string) error
+	GetUser(username string) (map[string]interface{}, error)
+}
+
+type userRepository struct {
+	driver neo4j.Driver
+}
+
+func NewUserRepository(driver neo4j.Driver) UserRepository {
+	return &userRepository{driver}
+}
+
+func (r *userRepository) CreateUser(username, password, email string) error {
+	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
@@ -26,8 +39,8 @@ func CreateUser(driver neo4j.Driver, username, password, email string) error {
 	return err
 }
 
-func GetUser(driver neo4j.Driver, username string) (map[string]interface{}, error) {
-	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+func (r *userRepository) GetUser(username string) (map[string]interface{}, error) {
+	session := r.driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 	result, err := session.ReadTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
 		result, err := transaction.Run(

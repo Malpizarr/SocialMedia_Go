@@ -3,7 +3,6 @@ package service
 import (
 	data "SocialMedia/Data"
 	"SocialMedia/Repositories"
-	"SocialMedia/db"
 	"SocialMedia/utils"
 	"encoding/json"
 	"io"
@@ -12,20 +11,25 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
-type PostService struct {
+type PostService interface {
+	CreatePost(w http.ResponseWriter, r *http.Request)
+	GetUserPosts(w http.ResponseWriter, r *http.Request)
+	DeletePost(w http.ResponseWriter, r *http.Request)
+	GetFriendsPosts(w http.ResponseWriter, r *http.Request)
+}
+
+type postService struct {
 	friendRepo Repositories.FriendsRepository
-	driver     neo4j.Driver
+	postRepo   Repositories.PostsRepository
 }
 
-func NewPostService() *PostService {
-	driver := db.Driver()
-	return &PostService{driver: driver}
+func NewPostService(pr Repositories.PostsRepository, fr Repositories.FriendsRepository) PostService {
+	return &postService{postRepo: pr, friendRepo: fr}
 }
 
-func (s *PostService) CreatePost(w http.ResponseWriter, r *http.Request) {
+func (s *postService) CreatePost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		log.Printf("Error al parsear el formulario multipart: %v", err)
@@ -69,7 +73,7 @@ func (s *PostService) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	username := r.Context().Value("username").(string)
 
-	if err := Repositories.CreatePost(s.driver, username, newPost); err != nil {
+	if err := s.postRepo.CreatePost(username, newPost); err != nil {
 		log.Printf("Error creando post: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -81,14 +85,14 @@ func (s *PostService) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *PostService) GetUserPosts(w http.ResponseWriter, r *http.Request) {
+func (s *postService) GetUserPosts(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("id")
 	if username == "" {
 		http.Error(w, "Username is required", http.StatusBadRequest)
 		return
 	}
 
-	posts, err := Repositories.GetUserPost(s.driver, username)
+	posts, err := s.postRepo.GetUserPost(username)
 	if err != nil {
 		log.Printf("Error obteniendo posts: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -102,7 +106,7 @@ func (s *PostService) GetUserPosts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *PostService) DeletePost(w http.ResponseWriter, r *http.Request) {
+func (s *postService) DeletePost(w http.ResponseWriter, r *http.Request) {
 	postID := r.PathValue("id")
 	if postID == "" {
 		http.Error(w, "Post ID is required", http.StatusBadRequest)
@@ -111,7 +115,7 @@ func (s *PostService) DeletePost(w http.ResponseWriter, r *http.Request) {
 
 	username := r.Context().Value("username").(string)
 
-	if err := Repositories.DeletePost(s.driver, username, postID); err != nil {
+	if err := s.postRepo.DeletePost(username, postID); err != nil {
 		log.Printf("Error deleting post: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -123,7 +127,7 @@ func (s *PostService) DeletePost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *PostService) GetFriendsPosts(w http.ResponseWriter, r *http.Request) {
+func (s *postService) GetFriendsPosts(w http.ResponseWriter, r *http.Request) {
 	username := r.Context().Value("username").(string)
 
 	friends, err := s.friendRepo.GetFriendsList(username)
@@ -135,7 +139,7 @@ func (s *PostService) GetFriendsPosts(w http.ResponseWriter, r *http.Request) {
 
 	var friendsPosts []data.Post
 	for _, friend := range friends {
-		posts, err := Repositories.GetUserPost(s.driver, friend)
+		posts, err := s.postRepo.GetUserPost(friend)
 		if err != nil {
 			log.Printf("Error obteniendo posts del amigo %s: %v", friend, err)
 			continue

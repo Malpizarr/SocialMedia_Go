@@ -7,8 +7,22 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
-func CreatePost(driver neo4j.Driver, username string, post data.Post) error {
-	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+type PostsRepository interface {
+	CreatePost(username string, post data.Post) error
+	GetUserPost(username string) ([]data.Post, error)
+	DeletePost(username, postID string) error
+}
+
+type postsRepository struct {
+	driver neo4j.Driver
+}
+
+func NewPostsRepository(driver neo4j.Driver) PostsRepository {
+	return &postsRepository{driver}
+}
+
+func (r *postsRepository) CreatePost(username string, post data.Post) error {
+	session := r.driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
 	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
@@ -31,8 +45,8 @@ func CreatePost(driver neo4j.Driver, username string, post data.Post) error {
 	return err
 }
 
-func GetUserPost(driver neo4j.Driver, username string) ([]data.Post, error) {
-	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+func (r *postsRepository) GetUserPost(username string) ([]data.Post, error) {
+	session := r.driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
 	query := `
@@ -96,8 +110,8 @@ func GetUserPost(driver neo4j.Driver, username string) ([]data.Post, error) {
 	return posts, nil
 }
 
-func DeletePost(driver neo4j.Driver, username, postID string) error {
-	session := driver.NewSession(neo4j.SessionConfig{})
+func (r *postsRepository) DeletePost(username, postID string) error {
+	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
 	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {

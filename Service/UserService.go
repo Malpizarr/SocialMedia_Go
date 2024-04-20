@@ -68,17 +68,10 @@ func (s *userService) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, err := json.Marshal(createdUser)
-	if err != nil {
-		log.Printf("Error serializando el usuario: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	if _, err := w.Write(jsonData); err != nil {
-		log.Printf("Error escribiendo la respuesta: %v", err)
+	if err := json.NewEncoder(w).Encode(createdUser); err != nil {
+		log.Printf("Error writing response: %v", err)
 	}
 }
 

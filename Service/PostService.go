@@ -18,6 +18,7 @@ type PostService interface {
 	GetUserPosts(w http.ResponseWriter, r *http.Request)
 	DeletePost(w http.ResponseWriter, r *http.Request)
 	GetFriendsPosts(w http.ResponseWriter, r *http.Request)
+	LikePost(w http.ResponseWriter, r *http.Request)
 }
 
 type postService struct {
@@ -151,5 +152,29 @@ func (s *postService) GetFriendsPosts(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(friendsPosts); err != nil {
 		log.Printf("Error encoding response: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (s *postService) LikePost(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		PostID string `json:"postID"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		log.Printf("Error decodificando el cuerpo de la solicitud: %v", err)
+		http.Error(w, "Cuerpo de solicitud inválido", http.StatusBadRequest)
+		return
+	}
+
+	username := r.Context().Value("username").(string)
+	if err := s.postRepo.LikePost(username, req.PostID); err != nil {
+		log.Printf("Error dando like al post: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write([]byte("Post liked successfully")); err != nil {
+		log.Printf("Error writing response: %v", err)
 	}
 }

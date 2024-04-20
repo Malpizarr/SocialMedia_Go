@@ -11,6 +11,7 @@ type PostsRepository interface {
 	CreatePost(username string, post data.Post) error
 	GetUserPost(username string) ([]data.Post, error)
 	DeletePost(username, postID string) error
+	LikePost(username, postID string) error
 }
 
 type postsRepository struct {
@@ -135,5 +136,24 @@ func (r *postsRepository) DeletePost(username, postID string) error {
 		log.Printf("Error in write transaction: %v", err)
 	}
 
+	return err
+}
+
+func (s *postsRepository) LikePost(username, postID string) error {
+	session := s.driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+	_, err := session.WriteTransaction(func(transaction neo4j.Transaction) (interface{}, error) {
+		_, err := transaction.Run(
+			`MATCH (p:Post {id: $postID})
+      MATCH (u:User {username: $username})
+      MERGE (u)-[r:LIKED]->(p)
+      ON CREATE SET r.timestamp = timestamp()
+      SET p.likes = p.likes + 1`,
+			map[string]interface{}{
+				"postID":   postID,
+				"username": username,
+			})
+		return nil, err
+	})
 	return err
 }

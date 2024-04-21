@@ -11,6 +11,7 @@ type FriendsService interface {
 	AddFriend(w http.ResponseWriter, r *http.Request)
 	DeleteFriend(w http.ResponseWriter, r *http.Request)
 	AcceptFriendRequest(w http.ResponseWriter, r *http.Request)
+	GetFriends(w http.ResponseWriter, r *http.Request)
 }
 
 type friendsService struct {
@@ -92,5 +93,20 @@ func (s *friendsService) AcceptFriendRequest(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "application/json")
 	if _, err := w.Write([]byte(`{"message": "Friend accepted"}`)); err != nil {
 		log.Printf("Error writing response: %v", err)
+	}
+}
+
+func (s *friendsService) GetFriends(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	friends, err := s.FriendRepo.GetFriendsList(username)
+	if err != nil {
+		log.Printf("Error getting friends list: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(friends); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }

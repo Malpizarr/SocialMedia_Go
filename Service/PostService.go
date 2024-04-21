@@ -19,6 +19,7 @@ type PostService interface {
 	DeletePost(w http.ResponseWriter, r *http.Request)
 	GetFriendsPosts(w http.ResponseWriter, r *http.Request)
 	LikePost(w http.ResponseWriter, r *http.Request)
+	GetLikesFromPost(w http.ResponseWriter, r *http.Request)
 }
 
 type postService struct {
@@ -176,5 +177,24 @@ func (s *postService) LikePost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("Post liked successfully")); err != nil {
 		log.Printf("Error writing response: %v", err)
+	}
+}
+
+func (s *postService) GetLikesFromPost(w http.ResponseWriter, r *http.Request) {
+	postID := r.URL.Query().Get("postID")
+	if postID == "" {
+		http.Error(w, "Post ID is required", http.StatusBadRequest)
+		return
+	}
+	likes, err := s.postRepo.GetLikesFromPost(postID)
+	if err != nil {
+		log.Printf("Error obteniendo likes del post: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(likes); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }

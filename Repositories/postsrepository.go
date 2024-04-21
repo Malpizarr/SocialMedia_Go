@@ -12,6 +12,7 @@ type PostsRepository interface {
 	GetUserPost(username string) ([]data.Post, error)
 	DeletePost(username, postID string) error
 	LikePost(username, postID string) error
+	GetLikesFromPost(postId string) ([]string, error)
 }
 
 type postsRepository struct {
@@ -156,4 +157,43 @@ func (s *postsRepository) LikePost(username, postID string) error {
 		return nil, err
 	})
 	return err
+}
+
+func (s *postsRepository) GetLikesFromPost(postId string) ([]string, error) {
+	session := s.driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close()
+
+	result, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(
+			`MATCH (p:Post {id: $postId})<-[:LIKED]-(u:User)
+             RETURN u.username AS username`,
+			map[string]interface{}{
+				"postId": postId,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		var likes []string
+		for result.Next() {
+			record := result.Record()
+			if username, ok := record.Get("username"); ok {
+				if username, ok := username.(string); ok {
+					likes = append(likes, username)
+				}
+			}
+		}
+
+		if err = result.Err(); err != nil {
+			return nil, err
+		}
+
+		return likes, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result.([]string), nil
 }
